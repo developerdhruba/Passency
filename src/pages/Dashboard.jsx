@@ -20,7 +20,7 @@ export default function Dashboard() {
   const [encryptedList, setEncryptedList] = useState([]);
   const [decrypted, setDecrypted] = useState({});
 
-  // Custom AES logic using Web Crypto API (basic)
+  // Encrypt using AES-GCM + PBKDF2 + Base64
   const encrypt = async (text) => {
     const encoder = new TextEncoder();
     const data = encoder.encode(text);
@@ -49,20 +49,17 @@ export default function Dashboard() {
       key,
       data
     );
-    return {
-      encrypted: btoa(
-        String.fromCharCode(...new Uint8Array(ciphertext)) +
-        "::" +
-        String.fromCharCode(...iv)
-      ),
-    };
+    const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+    const ivBase64 = btoa(String.fromCharCode(...iv));
+    return { encrypted: `${encryptedBase64}::${ivBase64}` };
   };
 
+  // Decrypt using same derived key and IV
   const decrypt = async (cipher) => {
     const encoder = new TextEncoder();
-    const [dataStr, ivStr] = atob(cipher).split("::");
-    const encryptedData = new Uint8Array([...dataStr].map((c) => c.charCodeAt(0)));
-    const iv = new Uint8Array([...ivStr].map((c) => c.charCodeAt(0)));
+    const [dataStr, ivStr] = cipher.split("::");
+    const encryptedData = Uint8Array.from(atob(dataStr), c => c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(ivStr), c => c.charCodeAt(0));
 
     const keyMaterial = await window.crypto.subtle.importKey(
       "raw",
@@ -141,7 +138,7 @@ export default function Dashboard() {
           Welcome, {user.email}
         </h2>
 
-        {/* Input section */}
+        {/* Input Section */}
         <div className="mb-8">
           <label className="block text-gray-700 mb-2 font-semibold">Enter Password</label>
           <div className="flex flex-col md:flex-row gap-4">
@@ -161,7 +158,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* List section */}
+        {/* Encrypted List */}
         <div className="grid gap-4">
           {encryptedList.map((item) => (
             <div
@@ -202,6 +199,7 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* Sign Out */}
         <div className="mt-10 text-center">
           <button
             onClick={signOutNow}
@@ -214,4 +212,4 @@ export default function Dashboard() {
       <Footer />
     </div>
   );
-      }
+              }
